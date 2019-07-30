@@ -27,6 +27,8 @@ To ensure the program executes with no errors, make sure that the MySQL user spe
 
 Furthermore, the database implemented for use with this software consists of two tables, one for storing users and a second for storing daily time report recordings. A visual representation is provided below:
 
+<img src="https://github.com/amar-sinha/employee-time-tracker/blob/master/images/db_structure.png?raw=true" alt="db_structure" width="500"/>
+
 ### <u>Program Specifications<u>
 
 
