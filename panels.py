@@ -1,4 +1,38 @@
-import wx, mysql.connector
+import wx, mysql.connector, time
+
+createdb_query = "CREATE DATABASE IF NOT EXISTS employee_time_tracker;"
+
+users_table_query = """
+    CREATE TABLE employee_time_tracker.users (
+        pin int(4) NOT NULL,
+        f_name varchar(100) NOT NULL,
+        l_name varchar(100) NOT NULL,
+        role varchar(50) NOT NULL,
+        PRIMARY KEY (pin)
+    ) ENGINE=InnoDB DEFAULT CHARSET=latin1;"""
+
+hours_table_query = """
+    CREATE TABLE employee_time_tracker.hours (
+        pin int(4) NOT NULL,
+        date date NOT NULL,
+        start_time time NOT NULL,
+        end_time time NOT NULL,
+        hours float NOT NULL,
+        PRIMARY KEY (pin, date, start_time),
+        FOREIGN KEY (pin) REFERENCES employee_time_tracker.users(pin) 
+    ) ENGINE=InnoDB DEFAULT CHARSET=latin1;"""
+
+try:
+    cnx = mysql.connector.connect(user='root', password='', host='localhost', database='employee_time_tracker')
+    cursor = cnx.cursor()
+
+except:
+    cnx = mysql.connector.connect(user='root', password='', host='localhost')
+    cursor = cnx.cursor()
+    cursor.execute(createdb_query)
+    cursor.execute(users_table_query)
+    cursor.execute(hours_table_query)
+    cnx.commit()
 
 class mainPanel(wx.Panel):
     # Main Panel will include:
@@ -35,6 +69,21 @@ class adminPanel(wx.Panel):
     # Admin Panel
         # Add / Remove Employees
         # Export Montly Time Reports
+        # List of Employees (use wx.ListBox or wx.ListCtrl)
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent=parent)
+        self.btn = wx.Button(self, -1, "Back to Main Menu", (410, 375))
+
+        png = wx.Image('images/logo.png')
+        png.Rescale(300, 80)
+        logo = wx.Bitmap(png)
+        wx.StaticBitmap(self, -1, logo, (340, 100), style=wx.BITMAP_TYPE_PNG)
+
+        self.addBtn = wx.Button(self, -1, "Add Employee", (410, 205))
+        self.remBtn = wx.Button(self, -1, "Remove Employee", (410, 235))
+        self.exportBtn = wx.Button(self, -1, "Export Time Sheets", (410, 265))
+    
+class addEmpPanel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent=parent)
         self.btn = wx.Button(self, -1, "Back to Main Menu", (350, 150))
