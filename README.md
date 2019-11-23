@@ -4,7 +4,7 @@
 _<h4>A Python program implemented to track employees' time records and export monthly time sheets.</h4>_
 
 ### <u>Goal</u>
-
+To develop an employee time tracking software to apply knowledge of integrated MySQL database transactions. The program will store and record timesheet data and users (admins and employees). The database has two tables to store the data, as described in the _MySQL & Database Specifications_ section below.
 
 ### <u>Implementation</u>
 
@@ -13,10 +13,6 @@ _<h4>A Python program implemented to track employees' time records and export mo
 Install mysql-connector
 
     $ pip install mysql-connector-python
-
-Install wxpython
-
-    $ pip install wxPython
 
 ### <u>MySQL & Database Specifications</u>
 Download the open source MySQL Community Server here: <a href="https://dev.mysql.com/downloads/mysql/">https://dev.mysql.com/downloads/mysql/</a>
@@ -29,6 +25,12 @@ Furthermore, the database implemented for use with this software consists of two
 
 <img src="https://github.com/amar-sinha/employee-time-tracker/blob/master/images/db_structure.png?raw=true" alt="db_structure" width="500"/>
 
-### <u>Program Specifications<u>
+### <u>Program Specifications</u>
+* _Main Panel_ - 
 
+* _Admin Panel_ - 
+
+* _Add/Remove Employee Panels_ - 
+
+* _Employee Panel_ -
 
