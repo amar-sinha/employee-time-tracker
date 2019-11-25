@@ -66,12 +66,15 @@ class emp_win():
         self.emp = tkWindow()
         self.empTk = self.emp.root
         self.empTk.title("Employees - Employee Time Tracker")
+        self.pin = pin
 
-        lastEntryQuery = "SELECT start_time, end_time from employee_time_tracker.hours WHERE pin = %s ORDER BY pin DESC, date DESC, start_time DESC" % pin
-        print(pin)
+        cursor.execute("START TRANSACTION")
+        lastEntryQuery = "SELECT * from employee_time_tracker.hours WHERE pin = %s ORDER BY pin DESC, date DESC, start_time DESC LIMIT 1 FOR UPDATE" % self.pin
         cursor.execute(lastEntryQuery)
         lastEntry = cursor.fetchone()
+        self.date, self.start_time, self.end_time, self.hours= lastEntry[1], lastEntry[2], lastEntry[3], lastEntry[4]
         print(lastEntry)
+        print(self.start_time, self.end_time)
 
         # set clock in and out buttons
         self.empLbl = Label(self.empTk, width=30)
@@ -79,41 +82,72 @@ class emp_win():
         self.empLbl.config(text = "Employee: %s, %s" % (l_name, f_name), font=("",24))
 
         self.clockInBtn = Button(self.empTk, text="Clock In")
-        self.clockInBtn.grid(row=1, column=0, columnspan=1, pady=20, ipadx=10, ipady=5)
-
         self.clockOutBtn = Button(self.empTk, text="Clock Out")
-        self.clockOutBtn.grid(row=1, column=1, columnspan=1, pady=20, ipadx=10, ipady=5)
+        self.clockInLbl = Label(self.empTk)
+
+        self.addClockInOutBtns("in")
+        self.addClockInOutBtns("out")
 
         if (lastEntry is not None):
-            if (lastEntry[0] is None):
-                print('ok')
-                self.clockOutBtn.grid_remove()
-            elif (lastEntry[1] is None):
-                test = self.convertSQLDateTimeToTimestamp(lastEntry[0])
-                self.clockOutBtn.configure(command=lambda val=test:self.onClockOutBtn_Click(test))
+            if (self.end_time is None):
+                print('ko')
+                self.clockOutBtn.configure(command=lambda cmd=self.start_time:self.onClockOutBtn_Click(self.start_time))
                 self.clockInBtn.grid_remove()
                 
-                self.clockInLbl = Label(self.empTk)
                 self.clockInLbl.grid(row=1, column=0, columnspan=1, pady=20, ipadx=10, ipady=5)
-                self.clockInLbl.config(text = "Clock In Time: " + str(test))
+                self.clockInLbl.config(text = "Clock In Time: " + str(self.start_time))
+            else:
+                print('ok')
+                self.clockInBtn.configure(command=lambda cmd=self:self.onClockInBtn_Click())
+                self.clockOutBtn.grid_remove()
+
+    def onClockInBtn_Click(self):
+        now = datetime.datetime.now().time()
+        date = datetime.datetime.now().date()
+        self.start_time = now.strftime("%H:%M:%S")
+        self.date = date.strftime("%Y-%m-%d")
+
+        self.clockInBtn.grid_remove()
+        self.clockInLbl.grid(row=1, column=0, columnspan=1, pady=20, ipadx=10, ipady=5)
+        self.clockInLbl.config(text = "Clock In Time: " + str(self.start_time))
+        self.addClockInOutBtns("out")
+
+        insertRowQuery = "INSERT INTO employee_time_tracker.hours (pin, date, start_time) VALUES (%s, '%s', '%s')" % (self.pin, self.date, self.start_time)
+        print(insertRowQuery)
+        cursor.execute(insertRowQuery)
+        cnx.commit()
 
     def onClockOutBtn_Click(self, then):
         now = datetime.datetime.now().time()
-        print("Current Time =", now)
+        self.end_time = now.strftime("%H:%M:%S")
         
-        then_delta = datetime.timedelta(hours=then.hour, minutes=then.minute, seconds=then.second)
         now_delta = datetime.timedelta(hours=now.hour, minutes=now.minute, seconds=now.second)
-        diff_delta_sec = now_delta - then_delta
-        diff_delta_hrs = diff_delta_sec.total_seconds()/3600
-        
-        print(self.roundTime(diff_delta_hrs))
+        diff_delta_sec = now_delta - self.start_time
+        diff_delta_hrs = diff_delta_sec.total_seconds() / 3600
+        self.hours = str(int(self.roundTime(diff_delta_hrs)))
+
+        self.clockOutBtn.grid_remove()
+        self.clockInLbl.grid_remove()
+        self.addClockInOutBtns("in")
+
+        updateRowQuery = "UPDATE employee_time_tracker.hours SET end_time = '%s', hours = %s WHERE pin = %s AND date = '%s' AND start_time = '%s'" % (self.end_time, self.hours, self.pin, str(self.date), str(self.start_time))
+        print(updateRowQuery)
+        cursor.execute(updateRowQuery)
+        cnx.commit()
+
+    def addClockInOutBtns(self, in_out):
+        if (in_out == "in"):
+            self.clockInBtn.grid(row=1, column=0, columnspan=1, pady=20, ipadx=10, ipady=5)
+            self.clockInBtn.configure(command=lambda cmd=self:self.onClockInBtn_Click())
+        elif (in_out == "out"):
+            self.clockOutBtn.grid(row=1, column=1, columnspan=1, pady=20, ipadx=10, ipady=5)
+            self.clockOutBtn.configure(command=lambda cmd=self.start_time:self.onClockOutBtn_Click(self.start_time))
 
     def convertSQLDateTimeToTimestamp(self, value):
         return (datetime.datetime.min + value).time()
 
     def roundTime(self, value):
         return round(value * 2) / 2
-
 
 class main_win():
     def __init__(self):
