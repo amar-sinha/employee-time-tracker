@@ -1,40 +1,15 @@
 from tkinter import *
-import tkinter.messagebox
-import mysql.connector, time, datetime
+import tkinter.messagebox, time, datetime
+import os, psycopg2, subprocess
 
-createdb_query = "CREATE DATABASE IF NOT EXISTS employee_time_tracker;"
-
-users_table_query = """
-    CREATE TABLE employee_time_tracker.users (
-        pin int(4) NOT NULL,
-        f_name varchar(100) NOT NULL,
-        l_name varchar(100) NOT NULL,
-        role varchar(50) NOT NULL,
-        PRIMARY KEY (pin)
-    ) ENGINE=InnoDB DEFAULT CHARSET=latin1;"""
-
-hours_table_query = """
-    CREATE TABLE employee_time_tracker.hours (
-        pin int(4) NOT NULL,
-        date date NOT NULL,
-        start_time time NOT NULL,
-        end_time time,
-        hours float,
-        PRIMARY KEY (pin, date, start_time),
-        FOREIGN KEY (pin) REFERENCES employee_time_tracker.users(pin) 
-    ) ENGINE=InnoDB DEFAULT CHARSET=latin1;"""
+PROC = subprocess.Popen('heroku config:get DATABASE_URL -a employee-time-tracker', stdout=subprocess.PIPE, shell=True)
+DB_URL = PROC.stdout.read().decode('utf-8').strip() + '?sslmode=require'
 
 try:
-    cnx = mysql.connector.connect(user='root', password='', host='localhost', database='employee_time_tracker')
+    cnx = psycopg2.connect(DB_URL, sslmode='require')
     cursor = cnx.cursor()
-
 except:
-    cnx = mysql.connector.connect(user='root', password='', host='localhost')
-    cursor = cnx.cursor()
-    cursor.execute(createdb_query)
-    cursor.execute(users_table_query)
-    cursor.execute(hours_table_query)
-    cnx.commit()
+    print("Connection to database failed.")
 
 
 class tkWindow():
@@ -68,13 +43,13 @@ class emp_win():
         self.empTk.title("Employees - Employee Time Tracker")
         self.pin = pin
 
-        cursor.execute("START TRANSACTION")
-        lastEntryQuery = "SELECT * from employee_time_tracker.hours WHERE pin = %s ORDER BY pin DESC, date DESC, start_time DESC LIMIT 1 FOR UPDATE" % self.pin
+        # need to ensure self.start_time is reloaded as datetime NOT str every time panel refreshed for clocking in and out
+        cursor.execute("BEGIN")
+        lastEntryQuery = "SELECT * from hours WHERE pin = %s ORDER BY pin DESC, start_time DESC LIMIT 1 FOR UPDATE" % self.pin
         cursor.execute(lastEntryQuery)
         lastEntry = cursor.fetchone()
-        self.date, self.start_time, self.end_time, self.hours= lastEntry[1], lastEntry[2], lastEntry[3], lastEntry[4]
-        print(lastEntry)
-        print(self.start_time, self.end_time)
+        if lastEntry is not None:
+            self.start_time, self.end_time, self.hours = lastEntry[1], lastEntry[2], lastEntry[3]
 
         # set clock in and out buttons
         self.empLbl = Label(self.empTk, width=30)
@@ -102,27 +77,24 @@ class emp_win():
                 self.clockOutBtn.grid_remove()
 
     def onClockInBtn_Click(self):
-        now = datetime.datetime.now().time()
-        date = datetime.datetime.now().date()
-        self.start_time = now.strftime("%H:%M:%S")
-        self.date = date.strftime("%Y-%m-%d")
+        now = datetime.datetime.now()
+        self.start_time = now.strftime("%Y-%m-%d %H:%M:%S")
 
         self.clockInBtn.grid_remove()
         self.clockInLbl.grid(row=1, column=0, columnspan=1, pady=20, ipadx=10, ipady=5)
         self.clockInLbl.config(text = "Clock In Time: " + str(self.start_time))
         self.addClockInOutBtns("out")
 
-        insertRowQuery = "INSERT INTO employee_time_tracker.hours (pin, date, start_time) VALUES (%s, '%s', '%s')" % (self.pin, self.date, self.start_time)
+        insertRowQuery = "INSERT INTO hours (pin, start_time) VALUES (%s, '%s')" % (self.pin, self.start_time)
         print(insertRowQuery)
         cursor.execute(insertRowQuery)
         cnx.commit()
 
     def onClockOutBtn_Click(self, then):
-        now = datetime.datetime.now().time()
-        self.end_time = now.strftime("%H:%M:%S")
-        
-        now_delta = datetime.timedelta(hours=now.hour, minutes=now.minute, seconds=now.second)
-        diff_delta_sec = now_delta - self.start_time
+        now = datetime.datetime.now()
+        self.end_time = now.strftime("%Y-%m-%d %H:%M:%S")
+
+        diff_delta_sec = now - self.start_time
         diff_delta_hrs = diff_delta_sec.total_seconds() / 3600
         self.hours = str(int(self.roundTime(diff_delta_hrs)))
 
@@ -130,7 +102,7 @@ class emp_win():
         self.clockInLbl.grid_remove()
         self.addClockInOutBtns("in")
 
-        updateRowQuery = "UPDATE employee_time_tracker.hours SET end_time = '%s', hours = %s WHERE pin = %s AND date = '%s' AND start_time = '%s'" % (self.end_time, self.hours, self.pin, str(self.date), str(self.start_time))
+        updateRowQuery = "UPDATE hours SET end_time = '%s', hours = %s WHERE pin = %s AND start_time = '%s'" % (self.end_time, self.hours, self.pin, str(self.start_time))
         print(updateRowQuery)
         cursor.execute(updateRowQuery)
         cnx.commit()
@@ -181,7 +153,7 @@ class main_win():
         
         elif value == 'SUBMIT':
                 # check pin
-                grabUserQuery = "SELECT * FROM employee_time_tracker.users WHERE pin = " + self.pin
+                grabUserQuery = "SELECT * FROM users WHERE pin = " + self.pin
                 cursor.execute(grabUserQuery)
                 user = cursor.fetchone()
                 print(user)
@@ -192,6 +164,7 @@ class main_win():
                         print(user)
                     elif user[3] == "emp":
                         emp = emp_win(self.pin, user[1], user[2])
+                        print(self.pin, user[1], user[2])
                         emp.emp.run()
                 else:
                     tkinter.messagebox.showinfo("Error - Employee Time Tracker", "ERROR: Invalid pin entered. Please try again.")
