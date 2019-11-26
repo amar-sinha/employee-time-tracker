@@ -1,5 +1,5 @@
 from tkinter import *
-import tkinter.messagebox, time, datetime
+import time, datetime
 from tkWindow import tkWindow
 
 class emp_win():
@@ -12,11 +12,11 @@ class emp_win():
         self.pin = pin
 
         self.cursor.execute("BEGIN")
-        lastEntryQuery = "SELECT * from hours WHERE pin = %s ORDER BY start_time DESC LIMIT 1 FOR UPDATE" % self.pin
+        lastEntryQuery = "SELECT start_time, end_time from hours WHERE pin = %s ORDER BY start_time DESC LIMIT 1 FOR UPDATE" % self.pin
         self.cursor.execute(lastEntryQuery)
         lastEntry = self.cursor.fetchone()
         if lastEntry is not None:
-            self.start_time, self.end_time, self.hours = lastEntry[1], lastEntry[2], lastEntry[3]
+            self.start_time, self.end_time = lastEntry[0], lastEntry[1]
 
         # set clock in and out buttons
         self.empLbl = Label(self.empTk, width=30)
@@ -32,14 +32,12 @@ class emp_win():
 
         if (lastEntry is not None):
             if (self.end_time is None):
-                print('ko')
                 self.clockOutBtn.configure(command=lambda cmd=self.start_time:self.onClockOutBtn_Click(self.start_time))
                 self.clockInBtn.grid_remove()
 
                 self.clockInLbl.grid(row=1, column=0, columnspan=1, pady=20, ipadx=10, ipady=5)
                 self.clockInLbl.config(text = "Clock In Time: " + str(self.start_time))
             else:
-                print('ok')
                 self.clockInBtn.configure(command=lambda cmd=self:self.onClockInBtn_Click())
                 self.clockOutBtn.grid_remove()
 
@@ -53,7 +51,6 @@ class emp_win():
         self.addClockInOutBtns("out")
 
         insertRowQuery = "INSERT INTO hours (pin, start_time) VALUES (%s, '%s')" % (self.pin, now)
-        print(insertRowQuery)
         self.cursor.execute(insertRowQuery)
         self.cnx.commit()
 
@@ -61,17 +58,17 @@ class emp_win():
         now = datetime.datetime.now()
         self.end_time = now.strftime("%Y-%m-%d %H:%M:%S")
 
-        diff_delta_sec = now - self.start_time
-        diff_delta_hrs = diff_delta_sec.total_seconds() / 3600
-        self.hours = str(int(self.roundTime(diff_delta_hrs)))
-
         self.clockOutBtn.grid_remove()
         self.clockInLbl.grid_remove()
         self.addClockInOutBtns("in")
 
-        updateRowQuery = "UPDATE hours SET end_time = '%s', hours = %s WHERE pin = %s AND start_time = '%s'" % (self.end_time, self.hours, self.pin, str(self.start_time))
-        print(updateRowQuery)
-        self.cursor.execute(updateRowQuery)
+        updtCond = "WHERE pin = %s AND start_time = '%s'" % (self.pin, str(self.start_time))
+        updateEndTimeQuery = "UPDATE hours SET end_time = '%s' %s" % (self.end_time, updtCond)
+        self.cursor.execute(updateEndTimeQuery)
+        updateDurationQuery = "UPDATE hours SET duration = end_time - start_time %s" % updtCond
+        self.cursor.execute(updateDurationQuery)
+        updateHoursQuery = "UPDATE hours SET hours = round(extract(epoch from duration)/3600) %s" % updtCond
+        self.cursor.execute(updateHoursQuery)
         self.cnx.commit()
 
     def addClockInOutBtns(self, in_out):

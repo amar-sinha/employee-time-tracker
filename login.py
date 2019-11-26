@@ -2,6 +2,7 @@ from tkinter import *
 import tkinter.messagebox, time, datetime
 import os, psycopg2, subprocess
 from employee import emp_win
+from administrator import admin_win
 from tkWindow import tkWindow
 
 PROC = subprocess.Popen('heroku config:get DATABASE_URL -a employee-time-tracker', stdout=subprocess.PIPE, shell=True)
@@ -48,15 +49,14 @@ class main_win():
                 grabUserQuery = "SELECT * FROM users WHERE pin = " + self.pin
                 cursor.execute(grabUserQuery)
                 user = cursor.fetchone()
-                print(user)
                 if user is not None:
                     self.main.close()
                     time.sleep(2)
                     if user[3] == "admin":
-                        print(user)
+                        admin = admin_win(cnx, cursor, self.pin, user[1], user[2])
+                        admin.admin.run()
                     elif user[3] == "emp":
                         emp = emp_win(cnx, cursor, self.pin, user[1], user[2])
-                        print(self.pin, user[1], user[2])
                         emp.emp.run()
                 else:
                     tkinter.messagebox.showinfo("Error - Employee Time Tracker", "ERROR: Invalid pin entered. Please try again.")
