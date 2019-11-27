@@ -1,5 +1,5 @@
 from tkinter import *
-import time, datetime
+import tkinter.messagebox, time, datetime
 from tkWindow import tkWindow
 
 class admin_win():
@@ -19,11 +19,8 @@ class admin_win():
         self.listbox = Listbox(self.adminTk, width=40)
         self.listbox.grid(row=1, column=1, pady=15)
 
-        getEmpsQuery = "SELECT CONCAT(f_name, ' ', l_name) AS name FROM users WHERE role = 'emp'"
-        self.cursor.execute(getEmpsQuery)
-        allEmps = self.cursor.fetchall()
-        for name in allEmps:
-            self.listbox.insert(END, " " + name[0])
+        self.cursor.execute("BEGIN")
+        self.loadEmployees()
 
         self.addEmpBtn = Button(self.adminTk, text="Add Employee", command=lambda cmd=self:self.onAddEmpBtn_Click())
         self.addEmpBtn.grid(row=2, column=0, padx=20, ipadx=10, ipady=5)
@@ -55,9 +52,23 @@ class admin_win():
         newLNameTxt = Entry(self.adminTk, width=15)
         newLNameTxt.grid(row=5, column=1, pady=10, sticky="w")
 
-        registerBtn = Button(self.adminTk, text="Register Employee", command=lambda cmd=self:self.onRegisterBtn_Click())
+        registerBtn = Button(self.adminTk, text="Register Employee", command=lambda cmd=self:self.onRegisterBtn_Click(newPinTxt.get(), newFNameTxt.get(), newLNameTxt.get()))
         registerBtn.grid(row=6, column=1, pady=10, ipadx=10, ipady=5, sticky="w")
 
-    def onRegisterBtn_Click(self):
-        pass
+    def onRegisterBtn_Click(self, pin, f_name, l_name):
+        if (pin != '' and f_name != '' and l_name != ''):
+            regEmpQuery = "INSERT INTO users (pin, f_name, l_name, role) VALUES (%s, '%s', '%s', 'emp')" % (pin, f_name, l_name)
+            self.cursor.execute(regEmpQuery)
+            self.cnx.commit()
+            self.loadEmployees()
+            tkinter.messagebox.showinfo("Success - Employee Time Tracker", "Employee %s %s added successfully." % (f_name, l_name))
+        else:
+            tkinter.messagebox.showerror("Error - Employee Time Tracker", "Error adding employee.")
 
+    def loadEmployees(self):
+        self.listbox.delete(0,END)
+        getEmpsQuery = "SELECT CONCAT(f_name, ' ', l_name) AS name FROM users WHERE role = 'emp'"
+        self.cursor.execute(getEmpsQuery)
+        allEmps = self.cursor.fetchall()
+        for name in allEmps:
+            self.listbox.insert(END, " " + name[0])
