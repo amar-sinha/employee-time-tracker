@@ -59,7 +59,7 @@ class main_win():
                         emp = emp_win(cnx, cursor, self.pin, user[1], user[2])
                         emp.emp.run()
                 else:
-                    tkinter.messagebox.showinfo("Error - Employee Time Tracker", "ERROR: Invalid pin entered. Please try again.")
+                    tkinter.messagebox.showerror("Error - Employee Time Tracker", "ERROR: Invalid pin entered. Please try again.")
                 self.pin = ""
                 self.mainLbl.config(text = self.pin)
 
