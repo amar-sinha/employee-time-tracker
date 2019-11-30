@@ -186,6 +186,7 @@ class admin_win():
             yearReportQuery = "COPY ("
 
             newRowQuery = """SELECT f_name, l_name, 
+                (SELECT DATE_PART('YEAR', AGE(dob)) FROM users where pin = %s) as age,
                 COALESCE((select sum(hours) from hours where pin = %s and start_time BETWEEN'%s-09-01 00:00:00' AND '%s-09-30 23:59:59'), 0) as sept, 
                 COALESCE((select sum(hours) from hours where pin = %s and start_time BETWEEN'%s-10-01 00:00:00' AND '%s-10-31 23:59:59'), 0) as oct, 
                 COALESCE((select sum(hours) from hours where pin = %s and start_time BETWEEN'%s-11-01 00:00:00' AND '%s-11-30 23:59:59'), 0) as nov, 
@@ -207,7 +208,7 @@ class admin_win():
                 pins.append(pin)
             
             for pin in pins:
-                yearReportQuery += newRowQuery % (pin, curYear, curYear, pin, curYear, curYear, pin, curYear, curYear, pin, curYear, curYear, pin, nextYear, nextYear, pin, nextYear, nextYear, pin, nextYear, nextYear, pin, nextYear, nextYear, pin, nextYear, nextYear, pin, nextYear, nextYear, pin, nextYear, nextYear, pin, nextYear, nextYear, pin)
+                yearReportQuery += newRowQuery % (pin, pin, curYear, curYear, pin, curYear, curYear, pin, curYear, curYear, pin, curYear, curYear, pin, nextYear, nextYear, pin, nextYear, nextYear, pin, nextYear, nextYear, pin, nextYear, nextYear, pin, nextYear, nextYear, pin, nextYear, nextYear, pin, nextYear, nextYear, pin, nextYear, nextYear, pin)
                 if pins.index(pin) != len(pins)-1:
                     yearReportQuery += " UNION ALL "
                 elif pins.index(pin) == len(pins)-1:
